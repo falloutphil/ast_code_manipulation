@@ -14,11 +14,8 @@
   (setv params (get func 2))      ; ['x']
   (setv body (cut func 3 None))   ; Use `cut` to slice from index 3 onward
 
-  ;; Create a valid Hy Expression for the log statement
-  (setv log-expr (Expression [(Symbol "print") (String "Executing foo")]))  ; Properly construct the log expression
-
   ;; Combine the log expression and the original body manually
-  (setv new-body [log-expr])       ; Start with the log expression in a list
+  (setv new-body [log-expression])       ; Start with the log expression in a list
   (for [item body] (new-body.append item))  ; Append each part of the original body
 
   ;; Reconstruct the function definition with the log statement
