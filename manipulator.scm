@@ -1,33 +1,34 @@
-;; 1) Define the function that inserts a log expression into the function definition
+;; Define the function that inserts a log expression into the function definition
 (define (add-logging func-string log-expression)
   ;; Parse the string into a list (e.g. '(define (foo x) (+ x x)))
   (let* ((func        (read (open-input-string func-string)))  ; e.g. '(define (foo x) (+ x x))
          (name-params (cadr func))    ; e.g. '(foo x)
-         (body        (cdddr func)))  ; e.g. '((+ x x))
-    ;; Reconstruct with log-expression inserted at the start of the body.
-    ;; We splice in log-expression plus the old body in a (begin ...).
+         (body        (cddr func)))  ; e.g. '((+ x x))
+                                      ;
+    ;; Reconstruct with log-expression sexp inserted at the start of the body.
     `(define ,name-params
          ,log-expression
          ,@body)))
 
-;; 2) Our original function as a string, with correct syntax:
-(define foo-string "(define (foo x) (newline) (display x) (newline) (+ x x))")
+;; Our original function as a string, to convert
+(define foo-string "(define (foo x) (format #t \"~a~%\" x) (+ x x))")
 
-;; 3) Create the transformed definition: we pass `'(display "Executing foo")`
-;;    so that the quotes stay intact in the final code.
+(define inject-code '(format #t "Executing foo~%"))
+
+;; Add logging to the function and store sexp
 (define transformed-sexp
   (add-logging foo-string
-               '(display "Executing foo")))
+               inject-code))
 
-;; 4) Show the code for debugging
-(display transformed-sexp)
-(newline)
+;; Show the code for debugging
+(format #t "~a~%" transformed-sexp)
 
-;; 5) Evaluate the code in a top-level environment so Guile treats
-;;    it as if typed at the REPL. This preserves the string literal properly.
+;; Evaluate the code in a top-level environment so Guile treats
+;; it as if typed at the REPL. This preserves the string literal properly.
 (eval transformed-sexp (interaction-environment))
 
-;; 6) Test the transformed function.
-;;    We expect "Executing foo" and 10 (from display x) on one line, and 20 on the next because of last newline (from the x+x)
-(display (foo 10))
-(newline)
+;; Test the transformed function.
+;; Executing foo
+;; 10
+;; 20
+(format #t "~a~%" (foo 10))

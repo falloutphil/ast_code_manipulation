@@ -3,7 +3,7 @@
 (import hy [eval])
 (import hy.models [Expression Symbol String])
 
-;; 1) Define the function that inserts a log expression into the function definition
+;; Define the function that inserts a log expression into the function definition
 (defn add-logging [func-string log-expression]
   ;; Parse the function string into a Hy expression
   (setv raw-forms (list (read-many func-string)))  ; Convert the lazy result to a list
@@ -13,29 +13,31 @@
   (setv params (get func 2))      ; ['x']
   (setv body (cut func 3 None))   ; Use `cut` to slice from index 3 onward
 
-  ;; Reconstruct the function definition with the log statement
+  ;; Reconstruct the function definition with the log statement expression
   `(defn ~name ~params
      ~log-expression
      ~@body))
 
 
-;; 2) Define the function as a string
+;; Our original function as a string, to convert
 (setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
 
-;; we can't use a basic sexp here!
+;; we can't use a basic sexp in Hy!
 (setv inject-code
       (Expression [(Symbol "print") (String "Executing foo")]))
 
-;; 3) Add logging to the function
-(setv transformed-fn
+;; Add logging to the function
+(setv transformed-exp
   (add-logging foo-string inject-code))  ; Ensure quotes remain intact
 
-;; 4) Show the transformed function for debugging
-(print transformed-fn)
-(print "\n")
+;; Show the code for debugging
+(print transformed-exp)
 
-;; 5) Evaluate the transformed function definition
-(eval transformed-fn)
+;; Evaluate the transformed function definition
+(eval transformed-exp)
 
-;; 6) Test the transformed function
-(print (foo 10))  ; Should print "Executing foo", then "10", then "20"
+;; Test the transformed function.
+;; Executing foo
+;; 10
+;; 20
+(print (foo 10))
