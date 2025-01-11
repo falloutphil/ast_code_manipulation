@@ -3,24 +3,26 @@
 
 ;; Define the function that inserts a log expression into the function definition
 (defn add-logging [func-string log-expression]
-  ;; Parse the function string into a Hy expression
-  (setv raw-forms (list (read-many func-string)))  ; Convert the lazy result to a list
-  (setv func (get raw-forms 0))                    ; Get the first top-level form
+  ;; Parse the function string into a Hy expression and destructure using `let`
+  (let [
+        ;; Read the forms from the function string and extract the first form
+        raw-forms (list (read-many func-string))
+        func (get raw-forms 0)
 
-  ;; Extract function components
-  (setv name (get func 1))        ; 'foo'
-  (setv params (get func 2))      ; ['x']
-  (setv body (cut func 3 None))   ; Use `cut` to slice from index 3 onward
-
-  ;; Reconstruct the function definition with the log statement expression
-  `(defn ~name ~params
-     ~log-expression
-     ~@body))
+        ;; Extract function components
+        name (get func 1)        ; Function name, e.g., 'foo'
+        params (get func 2)      ; Parameter list, e.g., '[x]'
+        body (cut func 3 None)   ; Function body, e.g., '[(print x) (+ x x)]'
+      ]
+    ;; Reconstruct the function definition with the log statement inserted
+    `(defn ~name ~params
+       ~log-expression
+       ~@body)))
 
 ;; Original function as a string to convert
 (setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
 
-;; Define the log expression using quote+sexp
+;; Define the log expression using natural Hy code
 (setv inject-code '(print "Executing foo"))
 
 ;; Add logging to the function
