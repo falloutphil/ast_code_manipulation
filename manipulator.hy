@@ -18,6 +18,7 @@
      ~log-expression
      ~@body))
 
+
 ;; 2) Define the function as a string
 (setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
 
