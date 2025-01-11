@@ -20,9 +20,8 @@
 ;; Original function as a string to convert
 (setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
 
-;; Define the log expression using natural Hy code (as a list)
-(setv inject-code
-      '(print "Executing foo"))
+;; Define the log expression using quote+sexp
+(setv inject-code '(print "Executing foo"))
 
 ;; Add logging to the function
 (setv transformed-exp

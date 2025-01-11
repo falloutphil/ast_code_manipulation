@@ -13,6 +13,7 @@
 ;; Our original function as a string, to convert
 (define foo-string "(define (foo x) (format #t \"~a~%\" x) (+ x x))")
 
+;; Define the log expression using quote+sexp
 (define inject-code '(format #t "Executing foo~%"))
 
 ;; Add logging to the function and store sexp
