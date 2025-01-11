@@ -1,4 +1,3 @@
-;; Import necessary functions
 (import hy.reader [read-many])
 (import hy [eval])
 (import hy.models [Expression Symbol String])
