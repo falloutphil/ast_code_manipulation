@@ -12,7 +12,7 @@
          ,@body))))
 
 ;; 2) Our original function as a string, with correct syntax:
-(define foo-string "(define (foo x) (+ x x) (newline) (display x))")
+(define foo-string "(define (foo x) (newline) (display x) (newline) (+ x x))")
 
 ;; 3) Create the transformed definition: we pass `'(display "Executing foo")`
 ;;    so that the quotes stay intact in the final code.
@@ -29,6 +29,6 @@
 (eval transformed-sexp (interaction-environment))
 
 ;; 6) Test the transformed function.
-;;    We expect "Executing foo" on one line, and "20" on the next.
+;;    We expect "Executing foo" and 10 (from display x) on one line, and 20 on the next because of last newline (from the x+x)
 (display (foo 10))
 (newline)
