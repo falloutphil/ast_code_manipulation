@@ -39,7 +39,8 @@ Function transformation—modifying the definition or behavior of existing funct
 
 **Example Guile Code:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/0a0e87580d53462d757a1da08721e323a2374bd4/manipulator.hy#L1-34
+https://github.com/falloutphil/ast_code_manipulation/blob/0a0e87580d53462d757a1da08721e323a2374bd4/manipulator.scm#L1-L34
+
 
 **Advantages:**
 
