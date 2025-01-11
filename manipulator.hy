@@ -1,6 +1,7 @@
 ;; Import necessary functions
 (import hy.reader [read-many])
 (import hy [eval])
+(import hy.models [Expression Symbol String])
 
 ;; 1) Define the function that inserts a log expression into the function definition
 (defn add-logging [func-string log-expression]
@@ -13,9 +14,12 @@
   (setv params (get func 2))      ; ['x']
   (setv body (cut func 3 None))   ; Use `cut` to slice from index 3 onward
 
+  ;; Create a valid Hy Expression for the log statement
+  (setv log-expr (Expression [(Symbol "print") (String "Executing foo")]))  ; Properly construct the log expression
+
   ;; Combine the log expression and the original body manually
-  (setv new-body (list log-expression))         ; [['print', "Executing foo"]]
-  (for [item body] (new-body.append item))      ; Append each part of the original body
+  (setv new-body [log-expr])       ; Start with the log expression in a list
+  (for [item body] (new-body.append item))  ; Append each part of the original body
 
   ;; Reconstruct the function definition with the log statement
   `(defn ~name ~params
@@ -26,7 +30,7 @@
 
 ;; 3) Add logging to the function
 (setv transformed-fn
-  (add-logging foo-string ['print', "Executing foo"]))  ; Ensure quotes remain intact
+  (add-logging foo-string (Expression [(Symbol "print") (String "Executing foo")])))  ; Ensure quotes remain intact
 
 ;; 4) Show the transformed function for debugging
 (print transformed-fn)
