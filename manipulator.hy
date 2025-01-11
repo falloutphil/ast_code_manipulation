@@ -2,6 +2,7 @@
 (import hy [eval])
 
 ;; Define the function that inserts a log expression into the function definition
+;; read-many returns generator, next assumes the first sexp will be the single fn we want
 (defn add-logging [func-string log-expression]
   ;; Parse the function string into a Hy expression and destructure using `let`
   (let [[_ name params #* body] (next (read-many func-string))]
