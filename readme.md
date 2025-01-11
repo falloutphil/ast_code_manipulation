@@ -1,4 +1,4 @@
-## **Comprehensive Report on Function Transformation in Guile, Hy, and Python**
+## **Function Transformation in Guile, Hy, and Python**
 
 ### **Table of Contents**
 
@@ -39,7 +39,42 @@ Function transformation—modifying the definition or behavior of existing funct
 
 **Example Guile Code:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.scm#L1-L34
+```scheme
+;; Define the function that inserts a log expression into the function definition
+(define (add-logging func-string log-expression)
+  ;; Parse the string into a list (e.g. '(define (foo x) (+ x x)))
+  (let* ((func        (read (open-input-string func-string)))  ; e.g. '(define (foo x) (+ x x))
+         (name-params (cadr func))    ; e.g. '(foo x)
+         (body        (cddr func)))  ; Function body, e.g., '((print x) (+ x x))
+        ;; Reconstruct with log-expression sexp inserted at the start of the body.
+        `(define ,name-params
+           ,log-expression
+           ,@body)))
+
+;; Our original function as a string, to convert
+(define foo-string "(define (foo x) (format #t \"~a~%\" x) (+ x x))")
+
+;; Define the log expression using quote+sexp
+(define inject-code '(format #t "Executing foo~%"))
+
+;; Add logging to the function and store sexp
+(define transformed-sexp
+  (add-logging foo-string
+               inject-code))
+
+;; Show the code for debugging
+(format #t "~a~%" transformed-sexp)
+
+;; Evaluate the code in a top-level environment so Guile treats
+;; it as if typed at the REPL. This preserves the string literal properly.
+(eval transformed-sexp (interaction-environment))
+
+;; Test the transformed function.
+;; Executing foo
+;; 10
+;; 20
+(format #t "~a~%" (foo 10))
+```
 
 **Advantages:**
 
@@ -65,25 +100,81 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
 
 - **Evaluation**: Hy's `eval` interacts with Python's evaluation environment, necessitating that transformed code adheres to Python's AST expectations.
 
-**Example Hy Code:**
+**Final Working Hy Code:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.hy#L1-L42
+```hy
+(import hy.reader [read-many])
+(import hy [eval])
 
-**Challenges Faced:**
+;; Define the function that inserts a log expression into the function definition
+;; read-many returns generator, next assumes the first sexp will be the single fn we want
+(defn add-logging [func-string log-expression]
+  ;; Parse the function string into a Hy expression and destructure using `let`
+  (let [[_ name params #* body] (next (read-many func-string))]
+    ;; Reconstruct the function definition with the log statement inserted
+    `(defn ~name ~params
+       ~log-expression
+       ~@body)))
 
-- **Expression and Symbol Handling**: Unlike Guile's simple lists, Hy requires explicit construction of `Expression` and `Symbol` objects, leading to more verbose and error-prone code.
+;; Original function as a string to convert
+(setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
+
+;; Define the log expression using natural Hy code
+(setv inject-code '(print "Executing foo"))
+
+;; Add logging to the function
+(setv transformed-exp
+  (add-logging foo-string
+               inject-code))  ; Ensure quotes remain intact
+
+;; Show the transformed code for debugging
+(print transformed-exp)
+
+;; Evaluate the transformed function definition
+(eval transformed-exp)
+
+;; Test the transformed function.
+;; Expected Output:
+;; Executing foo
+;; 10
+;; 20
+(print (foo 10))
+```
+
+**Explanation of Changes:**
+
+- **Destructuring with Extended Iterable Unpacking**:
   
-- **Type Mismatches**: Attempting to concatenate Python lists with Hy's `Expression` objects results in `TypeError`, as seen in the user's interactions.
+  ```hy
+  (let [[_ name params #* body] (next (read-many func-string))]
+    ...)
+  ```
+  
+  - **`[_ name params #* body]`**: Utilizes Hy's extended iterable unpacking (`#*`) to capture the remaining body expressions after extracting the function name and parameters. This approach avoids the use of magic numbers and enhances readability.
+  
+- **Reconstruction with Quasiquoting**:
+  
+  ```hy
+  `(defn ~name ~params
+     ~log-expression
+     ~@body)
+  ```
+  
+  - **Quasiquoting (`\``)**: Facilitates the insertion of variables and spliced lists into the reconstructed function definition.
+  - **Unquote (`~`) and Unquote-Splicing (`~@`)**: Embed the `name`, `params`, and `log-expression` directly, and splice the `body` expressions into the function body.
 
-- **Syntax Constraints**: Hy's need to accurately represent Lisp expressions using Python's AST-like objects introduces complexities not present in Guile.
+**Advantages:**
+
+- **Idiomatic Lisp Syntax**: Retains Lisp's powerful syntax and macro capabilities within the Python ecosystem.
+- **Clarity and Conciseness**: With proper destructuring and quasiquoting, the transformation code is clear and maintains conciseness comparable to Guile.
 
 **Limitations:**
 
-- **Verbosity**: The necessity to explicitly use `Expression`, `Symbol`, and other Hy model classes makes the code more verbose compared to Guile's succinct list manipulations.
+- **Expression and Symbol Handling**: Requires accurate handling of `hy.models.Expression` and `hy.models.Symbol` objects to avoid type mismatches.
   
-- **Type Safety**: Hy's strict type system between Python lists and Hy's `Expression` objects complicates dynamic code manipulations.
+- **Type Constraints**: Hy's strict type system between Python lists and Hy's `Expression` objects necessitates careful construction of transformed code.
 
-- **Error-Prone**: Manual construction of `Expression` objects increases the risk of syntax and type errors, as demonstrated in the user's experience.
+- **Error-Prone Transformations**: Manual reconstruction using quasiquoting can lead to syntax or type errors if not meticulously managed.
 
 ---
 
@@ -94,29 +185,111 @@ Python's `ast` module allows for parsing, analyzing, and modifying Python code a
 **Python Implementation Highlights:**
 
 - **AST Parsing**: Python can parse code strings into ASTs, manipulate the tree, and then compile and execute the modified code.
-
+  
 - **Flexibility**: The `ast` module provides comprehensive tools for traversing and modifying Python code structures.
-
+  
 - **Integration with Python Ecosystem**: Leveraging Python's native capabilities allows for seamless integration with existing Python codebases.
 
-**Example Python Code Using AST:**
+**Final Working Python Code Using AST:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.py#L1-L51
+```python
+import ast
+
+# Adds a logging expression to the beginning of a function definition.
+def add_logging(func_string, log_expression):
+    # Parse the function string into an AST
+    func_ast = ast.parse(func_string)
+
+    # Assuming the function is the first node in the module
+    func_def = func_ast.body[0]
+    if not isinstance(func_def, ast.FunctionDef):
+        raise ValueError("Input must be a valid function definition.")
+
+    # Insert the log expression at the beginning of the function body
+    func_def.body.insert(0, log_expression)
+    # Convert the modified AST back to code
+    transformed_code = ast.unparse(func_ast)
+
+    return transformed_code
+
+# Original function as a string
+foo_string = """
+def foo(x):
+    print(x)
+    return x + x
+"""
+
+# Create a generic logging expression
+inject_code = ast.Expr(
+    value=ast.Call(
+        func=ast.Name(id="print", ctx=ast.Load()),
+        args=[ast.Constant(value="Executing foo")],
+        keywords=[]
+    )
+)
+
+# Add logging to the function
+transformed_fn = add_logging(foo_string, inject_code)
+
+# Show the code for debugging
+print(transformed_fn)
+
+# Evaluate the transformed function definition
+exec(transformed_fn)
+
+# Test the transformed function.
+# Expected Output:
+# Executing foo
+# 10
+# 20
+print(foo(10))
+```
+
+**Explanation of Changes:**
+
+- **AST Parsing and Manipulation**:
+  
+  ```python
+  func_ast = ast.parse(func_string)
+  func_def = func_ast.body[0]
+  ```
+  
+  - **`ast.parse`**: Converts the function string into an AST.
+  - **`func_ast.body[0]`**: Assumes the first node is the function definition (`ast.FunctionDef`).
+
+- **Inserting the Logging Expression**:
+  
+  ```python
+  func_def.body.insert(0, log_expression)
+  ```
+  
+  - **`log_expression`**: An `ast.Expr` node representing the logging statement `(print "Executing foo")`.
+  - **Insertion**: Places the logging expression at the beginning of the function body.
+
+- **Unparsing and Execution**:
+  
+  ```python
+  transformed_code = ast.unparse(func_ast)
+  exec(transformed_code)
+  ```
+  
+  - **`ast.unparse`**: Converts the modified AST back into executable Python code.
+  - **`exec`**: Executes the transformed function definition in the current environment.
 
 **Advantages:**
 
-- **Powerful Manipulation**: Python's `ast` module provides a robust way to parse and manipulate code structures.
-
+- **Powerful Manipulation**: Python's `ast` module provides a robust way to parse and manipulate code structures programmatically.
+  
 - **Native Integration**: Since it's part of Python's standard library, it integrates seamlessly without needing external dependencies.
-
+  
 - **Flexibility**: Allows for complex transformations, including adding, removing, or modifying statements and expressions.
 
 **Limitations:**
 
 - **Verbosity**: Manipulating ASTs can be more verbose and complex compared to Guile's list-based manipulations.
-
+  
 - **Error Handling**: Requires careful handling to ensure that the transformed AST remains syntactically and semantically correct.
-
+  
 - **Performance**: AST transformations can introduce overhead, especially for large codebases or frequent transformations.
 
 ---
@@ -127,7 +300,7 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
 
 - **Guile**: Offers a straightforward approach due to its native s-expression handling. Parsing, manipulating, and reconstructing code is intuitive and requires minimal boilerplate.
 
-- **Hy**: More challenging due to the need to interact with Hy's `Expression` and `Symbol` classes. The process is more verbose and error-prone, as demonstrated by the user's struggles with type mismatches and syntax errors.
+- **Hy**: Achieved a clean and concise implementation comparable to Guile by leveraging extended iterable unpacking (`#*`) in destructuring. While initial attempts faced challenges with type mismatches and syntax errors, the final implementation maintains clarity and succinctness.
 
 - **Python (AST)**: Provides a systematic way to manipulate code but involves understanding Python's AST structures. While powerful, it requires more boilerplate and careful handling to maintain code correctness.
 
@@ -135,15 +308,15 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
 
 - **Guile**: High readability and cleanliness. Code manipulation remains close to natural Lisp syntax, making it easy to follow and maintain.
 
-- **Hy**: Lower readability due to the necessity of handling `Expression` objects and explicit type management. The transformation code becomes cluttered with type-specific constructs.
+- **Hy**: Maintains high readability and clarity similar to Guile after resolving initial challenges. The use of extended iterable unpacking enhances code conciseness, avoiding cumbersome boilerplate.
 
-- **Python (AST)**: Moderate readability. While the `ast` module's functions and classes are explicit, the transformation logic can become complex, especially for intricate code manipulations.
+- **Python (AST)**: Moderate readability. While the `ast` module's functions and classes are explicit, the transformation logic can become complex and verbose, especially for intricate code manipulations.
 
 #### **3.3. Flexibility and Power**
 
 - **Guile**: Extremely flexible within the context of s-expression manipulations. Scheme's macro system adds additional power for compile-time code transformations.
 
-- **Hy**: Less flexible compared to Guile due to type constraints and the additional layer of Python's AST. However, it still offers significant power through its macros and integration with Python.
+- **Hy**: Offers significant flexibility through its macros and integration with Python. The final implementation demonstrates the ability to perform clear and concise transformations, aligning closely with Guile's flexibility within the constraints of Python's ecosystem.
 
 - **Python (AST)**: Highly flexible and powerful, capable of handling a wide range of code transformations. The `ast` module supports comprehensive modifications, from simple statement insertions to complex structural changes.
 
@@ -154,9 +327,9 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
     - **Limited to Scheme's Capabilities**: While powerful, transformations are confined within Scheme's paradigm.
 
 - **Hy**:
-    - **Type Mismatches**: Difficulty in seamlessly combining Hy's `Expression` objects with Python lists leads to type errors.
-    - **Verbosity**: Increased code complexity due to explicit handling of `Expression` and `Symbol` classes.
-    - **Syntax Constraints**: Challenges in maintaining proper syntax when constructing `Expression` objects, leading to errors like unexpected tokens.
+    - **Type Constraints**: Initially faced challenges with Hy's `Expression` and `Symbol` objects, leading to type mismatches. These were resolved by adopting proper destructuring and reconstruction techniques.
+    - **Verbosity**: Although the final implementation is concise, handling more complex transformations may introduce additional complexity.
+    - **Integration with Python's AST**: While Hy operates within Python, it requires careful handling to ensure compatibility between Hy's AST and Python's execution environment.
 
 - **Python (AST)**:
     - **Complexity**: Understanding and manipulating ASTs requires in-depth knowledge of Python's AST structures.
@@ -170,20 +343,31 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
 #### **4.1. Choosing the Right Tool**
 
 - **For Simplicity and Readability**: If working within a Lisp/Scheme environment, Guile offers the cleanest and most intuitive approach to function transformation.
-  
+
 - **For Python Integration**: When needing to integrate closely with Python codebases, Python's `ast` module is the most powerful and flexible option, albeit more verbose.
 
-- **For Hybrid Needs**: If leveraging both Lisp's macros and Python's ecosystem is essential, Hy can be used, but be prepared for increased complexity and potential type-related issues.
+- **For Hybrid Needs**: If leveraging both Lisp's macros and Python's ecosystem is essential, Hy can be used effectively, as demonstrated by the final implementation. However, be prepared for increased complexity when dealing with more intricate transformations.
 
 #### **4.2. Best Practices for Hy**
 
-- **Maintain Consistent Types**: Ensure that all manipulated expressions remain within Hy's expected types (`Expression`, `Symbol`, etc.) to avoid type mismatches.
+- **Utilize Extended Iterable Unpacking**: Leveraging Hy's extended iterable unpacking (`#*`) simplifies destructuring, reducing boilerplate and enhancing readability.
+  
+  ```hy
+  (let [[_ name params #* body] (next (read-many func-string))]
+    ...)
+  ```
 
-- **Leverage Hy's Macros**: Utilize Hy's macro system to abstract and simplify repetitive transformation tasks, reducing boilerplate and potential errors.
+- **Leverage Quasiquoting Effectively**: Use quasiquoting with proper unquote and unquote-splicing to maintain clear and concise code reconstruction.
 
-- **Debugging and Validation**: Incorporate extensive debugging steps, such as printing intermediate AST states, to verify the correctness of transformations.
+  ```hy
+  `(defn ~name ~params
+     ~log-expression
+     ~@body)
+  ```
 
-- **Avoid Mixing Types**: Refrain from combining Python lists with Hy `Expression` objects directly. Instead, use Hy's list constructs consistently.
+- **Consistent Expression Handling**: Ensure that all manipulated expressions remain within Hy's expected types (`Expression`, `Symbol`, etc.) to avoid type mismatches.
+
+- **Extensive Debugging**: Incorporate debugging steps, such as printing intermediate AST states, to verify the correctness of transformations.
 
 #### **4.3. Best Practices for Python AST Manipulations**
 
@@ -195,6 +379,14 @@ https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2
 
 - **Performance Considerations**: For performance-critical applications, minimize the frequency of AST transformations and optimize the transformation logic.
 
+#### **4.4. Best Practices for Guile (Scheme)**
+
+- **Leverage S-Expressions**: Utilize Scheme's native s-expression handling for intuitive and direct code manipulation.
+
+- **Employ Macros for Repetitive Tasks**: Utilize Scheme's powerful macro system to abstract and simplify repetitive transformation tasks, reducing boilerplate and potential errors.
+
+- **Maintain Clear Separation of Concerns**: Keep parsing, manipulation, and evaluation steps clearly separated to enhance code clarity and maintainability.
+
 ---
 
 ### **5. Conclusion**
@@ -203,8 +395,190 @@ Function transformation is a potent technique that varies significantly across p
 
 - **Guile (Scheme)** stands out for its simplicity and elegance in code manipulation, leveraging s-expressions' inherent flexibility and powerful macros. Its direct approach makes it ideal for Lisp/Scheme-centric projects requiring dynamic code transformations.
 
-- **Hy**, while offering the benefits of Lisp's macros and Python's ecosystem, introduces complexities due to its hybrid nature. The need to manage distinct types like `Expression` and `Symbol` adds verbosity and potential for errors, making it less straightforward than Guile for code manipulation tasks.
+- **Hy**, while offering the benefits of Lisp's macros and Python's ecosystem, achieves a balance between readability and complexity through careful use of destructuring and quasiquoting. The final implementation demonstrates that Hy can perform clear and concise transformations comparable to Guile, provided that Hy-specific constructs are managed meticulously.
 
 - **Python's AST module** provides unmatched flexibility and power for manipulating Python code, seamlessly integrating with existing Python projects. However, the complexity and verbosity of AST manipulations require careful handling and a deep understanding of Python's AST structures.
 
-In summary, **Guile** offers the cleanest and most direct approach for function transformation within a Lisp environment, **Hy** bridges Lisp and Python with notable challenges, and **Python's AST** provides powerful but more verbose capabilities suited for Python-centric applications. Understanding these differences allows developers to choose the most appropriate tool based on project requirements, desired flexibility, and willingness to navigate each language's inherent complexities.
+In summary, **Guile** offers the cleanest and most direct approach for function transformation within a Lisp environment, **Hy** bridges Lisp and Python with notable effectiveness in achieving clear and concise transformations, and **Python's AST** provides powerful but more verbose capabilities suited for Python-centric applications. Understanding these differences allows developers to choose the most appropriate tool based on project requirements, desired flexibility, and willingness to navigate each language's inherent complexities.
+
+---
+
+### **Final Code Implementations**
+
+#### **Guile (Scheme) Final Code**
+
+```scheme
+;; Define the function that inserts a log expression into the function definition
+(define (add-logging func-string log-expression)
+  ;; Parse the string into a list (e.g. '(define (foo x) (+ x x)))
+  (let* ((func        (read (open-input-string func-string)))  ; e.g. '(define (foo x) (+ x x))
+         (name-params (cadr func))    ; e.g. '(foo x)
+         (body        (cddr func)))  ; Function body, e.g., '((print x) (+ x x))
+        ;; Reconstruct with log-expression sexp inserted at the start of the body.
+        `(define ,name-params
+           ,log-expression
+           ,@body)))
+
+;; Our original function as a string, to convert
+(define foo-string "(define (foo x) (format #t \"~a~%\" x) (+ x x))")
+
+;; Define the log expression using quote+sexp
+(define inject-code '(format #t "Executing foo~%"))
+
+;; Add logging to the function and store sexp
+(define transformed-sexp
+  (add-logging foo-string
+               inject-code))
+
+;; Show the code for debugging
+(format #t "~a~%" transformed-sexp)
+
+;; Evaluate the code in a top-level environment so Guile treats
+;; it as if typed at the REPL. This preserves the string literal properly.
+(eval transformed-sexp (interaction-environment))
+
+;; Test the transformed function.
+;; Executing foo
+;; 10
+;; 20
+(format #t "~a~%" (foo 10))
+```
+
+**Output:**
+```
+(define (foo x) (format #t "Executing foo~%") (format #t "~a~%" x) (+ x x))
+Executing foo
+10
+20
+```
+
+#### **Hy (Lisp for Python) Final Code**
+
+```hy
+(import hy.reader [read-many])
+(import hy [eval])
+
+;; Define the function that inserts a log expression into the function definition
+;; read-many returns generator, next assumes the first sexp will be the single fn we want
+(defn add-logging [func-string log-expression]
+  ;; Parse the function string into a Hy expression and destructure using `let`
+  (let [[_ name params #* body] (next (read-many func-string))]
+    ;; Reconstruct the function definition with the log statement inserted
+    `(defn ~name ~params
+       ~log-expression
+       ~@body)))
+
+;; Original function as a string to convert
+(setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
+
+;; Define the log expression using natural Hy code
+(setv inject-code '(print "Executing foo"))
+
+;; Add logging to the function
+(setv transformed-exp
+  (add-logging foo-string
+               inject-code))  ; Ensure quotes remain intact
+
+;; Show the transformed code for debugging
+(print transformed-exp)
+
+;; Evaluate the transformed function definition
+(eval transformed-exp)
+
+;; Test the transformed function.
+;; Expected Output:
+;; Executing foo
+;; 10
+;; 20
+(print (foo 10))
+```
+
+**Output:**
+```
+(defn foo [x]
+  (print "Executing foo")
+  (print x)
+  (+ x x))
+Executing foo
+10
+20
+```
+
+#### **Python (Using AST) Final Code**
+
+```python
+import ast
+
+# Adds a logging expression to the beginning of a function definition.
+def add_logging(func_string, log_expression):
+    # Parse the function string into an AST
+    func_ast = ast.parse(func_string)
+
+    # Assuming the function is the first node in the module
+    func_def = func_ast.body[0]
+    if not isinstance(func_def, ast.FunctionDef):
+        raise ValueError("Input must be a valid function definition.")
+
+    # Insert the log expression at the beginning of the function body
+    func_def.body.insert(0, log_expression)
+    # Convert the modified AST back to code
+    transformed_code = ast.unparse(func_ast)
+
+    return transformed_code
+
+# Original function as a string
+foo_string = """
+def foo(x):
+    print(x)
+    return x + x
+"""
+
+# Create a generic logging expression
+inject_code = ast.Expr(
+    value=ast.Call(
+        func=ast.Name(id="print", ctx=ast.Load()),
+        args=[ast.Constant(value="Executing foo")],
+        keywords=[]
+    )
+)
+
+# Add logging to the function
+transformed_fn = add_logging(foo_string, inject_code)
+
+# Show the code for debugging
+print(transformed_fn)
+
+# Evaluate the transformed function definition
+exec(transformed_fn)
+
+# Test the transformed function.
+# Expected Output:
+# Executing foo
+# 10
+# 20
+print(foo(10))
+```
+
+**Output:**
+```python
+def foo(x):
+    print("Executing foo")
+    print(x)
+    return x + x
+
+Executing foo
+10
+20
+```
+
+---
+
+### **Key Takeaways**
+
+- **Guile** offers a clean and intuitive approach to function transformation through its native s-expression handling and powerful macro system. The final implementation demonstrates high readability and minimal boilerplate, making it ideal for Lisp/Scheme-centric projects.
+
+- **Hy** successfully bridges Lisp's macro capabilities with Python's ecosystem, achieving a clear and concise implementation comparable to Guile. By utilizing extended iterable unpacking and proper quasiquoting, Hy maintains code cleanliness while handling type-specific constructs effectively.
+
+- **Python's AST module** provides robust and flexible tools for code manipulation, allowing for comprehensive transformations. However, it introduces increased verbosity and complexity, necessitating careful handling to maintain syntactic and semantic correctness.
+
+Understanding the strengths and limitations of each approach enables developers to select the most appropriate tool based on project requirements, desired flexibility, and familiarity with the language's paradigms.
