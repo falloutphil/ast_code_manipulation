@@ -25,7 +25,7 @@
 ;; 2) Define the function as a string
 (setv foo-string "(defn foo [x] (print x) (+ x x))")  ; Function definition as a string
 
-;; 3) Add logging to the function
+;; 3) Add logging to the function - we can't use a basic sexp here!
 (setv transformed-fn
   (add-logging foo-string (Expression [(Symbol "print") (String "Executing foo")])))  ; Ensure quotes remain intact
 
