@@ -4,16 +4,7 @@
 ;; Define the function that inserts a log expression into the function definition
 (defn add-logging [func-string log-expression]
   ;; Parse the function string into a Hy expression and destructure using `let`
-  (let [
-        ;; Read the forms from the function string and extract the first form
-        raw-forms (list (read-many func-string))
-        func (get raw-forms 0)
-
-        ;; Extract function components
-        name (get func 1)        ; Function name, e.g., 'foo'
-        params (get func 2)      ; Parameter list, e.g., '[x]'
-        body (cut func 3 None)   ; Function body, e.g., '[(print x) (+ x x)]'
-      ]
+  (let [[_ name params #* body] (next (read-many func-string))]
     ;; Reconstruct the function definition with the log statement inserted
     `(defn ~name ~params
        ~log-expression
