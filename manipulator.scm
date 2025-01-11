@@ -7,9 +7,8 @@
     ;; Reconstruct with log-expression inserted at the start of the body.
     ;; We splice in log-expression plus the old body in a (begin ...).
     `(define ,name-params
-       (begin
          ,log-expression
-         ,@body))))
+         ,@body)))
 
 ;; 2) Our original function as a string, with correct syntax:
 (define foo-string "(define (foo x) (newline) (display x) (newline) (+ x x))")
