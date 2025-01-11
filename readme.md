@@ -39,8 +39,7 @@ Function transformation—modifying the definition or behavior of existing funct
 
 **Example Guile Code:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/0a0e87580d53462d757a1da08721e323a2374bd4/manipulator.scm#L1-L34
-
+https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.scm#L1-L34
 
 **Advantages:**
 
@@ -68,7 +67,7 @@ https://github.com/falloutphil/ast_code_manipulation/blob/0a0e87580d53462d757a1d
 
 **Example Hy Code:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/e39e5aee921ec9a7fe92c0ce760a1ecd5c48a336/manipulator.hy#L1-L41
+https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.hy#L1-L42
 
 **Challenges Faced:**
 
@@ -102,7 +101,7 @@ Python's `ast` module allows for parsing, analyzing, and modifying Python code a
 
 **Example Python Code Using AST:**
 
-https://github.com/falloutphil/ast_code_manipulation/blob/e6d4a1fe164a79e71bfad65b196c85ead8808bd3/manipulator.py#L1-L44
+https://github.com/falloutphil/ast_code_manipulation/blob/8d8a330357ce3ace6ee3b2a3e60247e6c44de197/manipulator.py#L1-L51
 
 **Advantages:**
 
