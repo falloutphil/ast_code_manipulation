@@ -1,0 +1,13 @@
+venv*/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.pyc
+*.pyo
+*.log
+db.sqlite
+app.db
+app.db.BACKUP
+.vscode
+build
