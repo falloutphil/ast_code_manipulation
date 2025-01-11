@@ -1,8 +1,7 @@
 import ast
 
+# Adds a logging expression to the beginning of a function definition.
 def add_logging(func_string, log_expression):
-    # Adds a logging expression to the beginning of a function definition.
-
     # Parse the function string into an AST
     func_ast = ast.parse(func_string)
 
@@ -42,7 +41,6 @@ print(transformed_fn)
 
 # Evaluate the transformed function definition
 exec(transformed_fn)
-
 
 # Test the transformed function.
 # Executing foo
