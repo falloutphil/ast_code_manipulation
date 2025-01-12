@@ -1,4 +1,4 @@
-## **Comprehensive Report on Function Transformation in Guile, Hy, and Python**
+## **Function Transformation in Guile, Hy, and Python**
 
 ### **Table of Contents**
 
